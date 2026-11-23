@@ -5,7 +5,18 @@
   "description": "表示中のWebページを自動スクロールで撮影し、端末内でPNGにします。",
   "minimum_chrome_version": "121",
   "permissions": ["activeTab", "scripting"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "24": "icons/icon-24.png",
+      "32": "icons/icon-32.png"
+    },
     "default_title": "Full Capt · ページ全体を撮影"
   },
   "background": {
