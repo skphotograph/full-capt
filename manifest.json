@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Full Capt",
+  "version": "0.1.0",
+  "description": "表示中のWebページを自動スクロールで撮影し、端末内でPNGにします。",
+  "minimum_chrome_version": "121",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_title": "Full Capt · ページ全体を撮影"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+  }
+}

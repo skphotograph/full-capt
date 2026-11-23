@@ -1,0 +1,67 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  background: light-dark(#eef2f5, #171c22);
+  color: light-dark(#142333, #e9eef5);
+}
+
+body { margin: 0; }
+
+header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 14px clamp(16px, 4vw, 48px);
+  background: light-dark(#ffffff, #222b35);
+  border-bottom: 1px solid light-dark(#d8e1ea, #3a495a);
+}
+
+h1 { margin: 0; font-size: 1.15rem; }
+p { margin: 4px 0 0; line-height: 1.5; }
+
+#actions:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#actions > :is(a, button) {
+  padding: 9px 15px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 650;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+#copy {
+  background: light-dark(#eef2f5, #303b47);
+  border-color: light-dark(#d8e1ea, #3a495a);
+  color: inherit;
+}
+
+#copy:hover { background: light-dark(#e0e8f0, #3a495a); }
+
+#save {
+  background: #164d95;
+  color: #fff;
+}
+
+#save:hover { background: #0d3f80; }
+#actions > :focus-visible { outline: 2px solid #3182db; outline-offset: 3px; }
+
+main { padding: clamp(12px, 4vw, 42px); }
+
+#preview:not([hidden]) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  box-shadow: 0 2px 14px #0002;
+}
