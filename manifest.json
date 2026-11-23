@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Full Capt",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "表示中のWebページを自動スクロールで撮影し、端末内でPNGにします。",
   "minimum_chrome_version": "121",
   "permissions": ["activeTab", "scripting"],
