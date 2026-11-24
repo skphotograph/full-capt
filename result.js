@@ -26,8 +26,9 @@ async function start() {
     const badge = (text) => chrome.action.setBadgeText({ tabId, text }).catch(() => {});
     await badge('…');
     try {
-      const { blob, width, height } = await capturePage(tabId, windowId, (done, total) => {
-        status.textContent = `ページを撮影中… ${done} / ${total}`;
+      const { blob, width, height } = await capturePage(tabId, windowId, (done, total, retry) => {
+        const action = retry ? `ページの大きさが変わったため再撮影中（${retry}回目）…` : 'ページを撮影中…';
+        status.textContent = `${action} ${done} / ${total}`;
         void badge(`${Math.floor(done / total * 100)}%`);
       });
       const pngUrl = URL.createObjectURL(blob);

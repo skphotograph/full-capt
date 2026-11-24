@@ -1,10 +1,14 @@
 const MAX_SIDE = 32767;
 const MAX_PIXELS = 80_000_000;
 const MAX_TILES = 120;
+const MAX_LAYOUT_RETRIES = 2;
+const LAYOUT_RETRY_DELAY_MS = 350;
 // Chrome allows at most two captureVisibleTab calls per second.
 const CAPTURE_INTERVAL_MS = 550;
 
 export class CaptureError extends Error {}
+
+class PageSizeChangedError extends CaptureError {}
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -19,9 +23,13 @@ function offsets(total, viewport) {
 
 function checkLayout(initial, current, x, y) {
   if (!current) throw new CaptureError('撮影中にページが開き直されたため、中断しました。');
-  const dimensions = ['width', 'height', 'viewWidth', 'viewHeight', 'left', 'dpr'];
+  const viewport = ['viewWidth', 'viewHeight', 'dpr'];
+  if (viewport.some((field) => initial[field] !== current[field])) {
+    throw new CaptureError('撮影中にウィンドウの大きさや表示倍率が変わりました。表示を固定してから、もう一度撮影してください。');
+  }
+  const dimensions = ['width', 'height', 'left'];
   if (dimensions.some((field) => initial[field] !== current[field])) {
-    throw new CaptureError('撮影中にページの大きさが変わりました。表示が落ち着いてから、もう一度撮影してください。');
+    throw new PageSizeChangedError('撮影をやり直しましたが、ページの大きさが変わり続けています。表示が落ち着いてから、もう一度撮影してください。');
   }
   if (Math.abs(current.x - x) > 1 || Math.abs(current.y - y) > 1) {
     throw new CaptureError('ページを撮影位置に固定できませんでした。ページの自動スクロールを止めてからお試しください。');
@@ -71,10 +79,6 @@ function drawTile(context, image, layout, x, y, left, top, scaleX, scaleY) {
 export async function capturePage(tabId, windowId, onProgress) {
   let canceled = false;
   let documentId;
-  let canvas;
-  let context;
-  let scaleX;
-  let scaleY;
   let lastCapture = -Infinity;
 
   function onActivated(info) {
@@ -103,20 +107,11 @@ export async function capturePage(tabId, windowId, onProgress) {
     return frame?.result;
   }
 
-  chrome.tabs.onActivated.addListener(onActivated);
-  chrome.tabs.onUpdated.addListener(onUpdated);
-  chrome.tabs.onRemoved.addListener(onRemoved);
-  chrome.tabs.onDetached.addListener(onRemoved);
-
-  try {
-    await checkActiveTab();
-    try {
-      const [frame] = await chrome.scripting.executeScript({ target: { tabId }, files: ['page.js'] });
-      documentId = frame.documentId;
-    } catch {
-      if (canceled) await checkActiveTab();
-      throw new CaptureError('このページでは全体撮影を実行できません。通常のWebページでお試しください。');
-    }
+  async function captureAttempt(retry) {
+    let canvas;
+    let context;
+    let scaleX;
+    let scaleY;
 
     const layout = await page('inspect');
     if (!layout?.viewWidth || !layout.viewHeight) throw new CaptureError('ページの表示範囲を取得できませんでした。');
@@ -128,7 +123,7 @@ export async function capturePage(tabId, windowId, onProgress) {
     const rows = offsets(layout.height, layout.viewHeight);
     let completed = 0;
     let top = 0;
-    onProgress(completed, tileCount);
+    onProgress(completed, tileCount, retry);
 
     for (const y of rows) {
       let left = 0;
@@ -165,12 +160,43 @@ export async function capturePage(tabId, windowId, onProgress) {
           image.close();
         }
         left = Math.min(layout.width, x + layout.viewWidth);
-        onProgress(++completed, tileCount);
+        onProgress(++completed, tileCount, retry);
       }
       top = Math.min(layout.height, y + layout.viewHeight);
     }
+
+    return canvas;
+  }
+
+  chrome.tabs.onActivated.addListener(onActivated);
+  chrome.tabs.onUpdated.addListener(onUpdated);
+  chrome.tabs.onRemoved.addListener(onRemoved);
+  chrome.tabs.onDetached.addListener(onRemoved);
+
+  let canvas;
+  try {
+    for (let retry = 0; ; retry++) {
+      await checkActiveTab();
+      try {
+        const target = documentId ? { tabId, documentIds: [documentId] } : { tabId };
+        const [frame] = await chrome.scripting.executeScript({ target, files: ['page.js'] });
+        documentId = frame.documentId;
+      } catch {
+        if (canceled) await checkActiveTab();
+        throw new CaptureError('このページでは全体撮影を実行できません。通常のWebページでお試しください。');
+      }
+
+      try {
+        canvas = await captureAttempt(retry);
+        break;
+      } catch (error) {
+        if (!(error instanceof PageSizeChangedError) || retry >= MAX_LAYOUT_RETRIES) throw error;
+        await delay(LAYOUT_RETRY_DELAY_MS);
+      } finally {
+        await page('restore').catch(() => {});
+      }
+    }
   } finally {
-    if (documentId) await page('restore').catch(() => {});
     chrome.tabs.onActivated.removeListener(onActivated);
     chrome.tabs.onUpdated.removeListener(onUpdated);
     chrome.tabs.onRemoved.removeListener(onRemoved);
